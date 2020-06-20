@@ -1,5 +1,5 @@
 # Imperal
-A purely functional, and imperative programming language
+A purely functional, and imperative programming language.
 
 # How? and What?
 The first question that ould come to anybody's mind after hearing that a language is both imperative and purely functonal is hwo would thst work. If you understand monads, you probably already know what's going on but let me just make a simple expression that allows two expresssions to be chained together.
