@@ -1,0 +1,30 @@
+x = 0
+define y = 8
+
+while x<6 {
+  x = x+1
+}
+
+env = encap {
+  define term = inc: 4
+  sub = [(fun: a, b -> a-b), 3]
+  fun inc: n -> n+1
+  res = sub/0: y!, 2
+  x = term!
+}
+
+m = x*x for x in [1,2,3,4,5] -> if x!=5
+
+fib = fun: n {
+  if n==0 | n==1 {
+    return 1
+  } else {
+    return (fib: n-1) + (fib: n-2)
+  }
+}
+
+fac = fun: n -> 1 if n==1 else n*(fac: n-1)
+
+fun add: a -> fun: b -> a+b
+
+fac: x
