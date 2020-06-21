@@ -167,6 +167,32 @@ class Lexer(fn : String, text : String){
         return Token(TT_NUMBER, number_str, pos_start, this.pos.copy())
       }
 
+  fun make_string() : Token {
+    var string : String = ""
+    var escape_character = false
+    val escape_characters = mapOf(
+      "t" to "\t",
+      "n" to "\n"
+    )
+    val pos_start = this.pos.copy()
+    this.advance()
+    while (this.current_char != "\"" || escape_character){
+      if (escape_character) {
+        string += if (escape_characters[this.current_char] != null) escape_characters[this.current_char] else this.current_char
+        escape_character = false
+      } else {
+        if (this.current_char == "\\"){
+            escape_character = true
+        } else {
+            string += this.current_char
+        }
+        this.advance()
+      }
+    }
+    this.advance()
+    return Token(TT_STRING, string, pos_start, this.pos.copy())
+  }
+
   fun make_identifier() : Token {
     var id_str = ""
     val valid_chars = mutableListOf<String>()
@@ -302,6 +328,8 @@ class Lexer(fn : String, text : String){
           tokens.add(this.not_or_ne())
         } else if (this.current_char == "="){
           tokens.add(this.equals_or_ee_or_darrow())
+        } else if (this.current_char == "\""){
+          tokens.add(this.make_string())
         } else if (LETTERS.contains(this.current_char.toString())) {
           tokens.add(this.make_identifier())
         } else if (DIGITS.contains(this.current_char.toString())) {
@@ -323,6 +351,7 @@ class Lexer(fn : String, text : String){
 interface Visitor<out R>{
   fun visit(node: EmptyNode, context : Context): R
   fun visit(node: NumberNode, context : Context): R
+  fun visit(node: StringNode, context : Context): R
   fun visit(node: BinOpNode, context : Context): R
   fun visit(node: UnaryOpNode, context : Context): R
   fun visit(node: VarAssignNode, context : Context): R
@@ -344,7 +373,7 @@ interface Node {
   override fun toString(): String
 }
 
-class NumberNode(number : String, pos_start : Position, pos_end : Position) : Node{
+class NumberNode(number : String, pos_start : Position, pos_end : Position) : Node {
   public val number = number
   public val pos_start = pos_start
   public val pos_end = pos_end
@@ -356,6 +385,21 @@ class NumberNode(number : String, pos_start : Position, pos_end : Position) : No
   override fun toString() : String {
         val num = this.number.toString()
         return "$num"
+    }
+}
+
+class StringNode(string : String, pos_start : Position, pos_end : Position) : Node {
+  public val string = string
+  public val pos_start = pos_start
+  public val pos_end = pos_end
+
+  override fun <R> accept(visitor : Visitor<R>, context : Context) : R {
+    return visitor.visit(this, context)
+  }
+
+  override fun toString() : String {
+        val string = this.string
+        return "$string"
     }
 }
 
@@ -992,6 +1036,12 @@ class Parser(tokens : MutableList<Token>){
         res.register_advancement()
         this.advance()
         return res.success(NumberNode(value, pos_start, pos_end))
+    } else if (this.current_tok!!.type_ == TT_STRING){
+        val pos_end = this.current_tok!!.pos_end.copy()
+        val value = this.current_tok!!.value!!
+        res.register_advancement()
+        this.advance()
+        return res.success(StringNode(value, pos_start, pos_end))
     } else if (this.current_tok!!.type_ == TT_IDENTIFIER){
         val pos_end = this.current_tok!!.pos_end.copy()
         val id_tok = this.current_tok!!
@@ -1451,6 +1501,83 @@ class NullType() : Number(0f){
   }
 }
 
+open class Str(value : String) : Value() {
+  public val value : String = value
+
+  override fun add(other : Value) : Pair<Value, Error?> {
+    if (other is Str) {
+      val new_number = Str(this.value + other.value).set_pos(this.pos_end!!.copy(), this.pos_end!!.copy()).set_context(this.context)
+      return Pair(new_number, null)
+    }
+    return Pair(emptyValue, this.illegal_operation(other))
+  }
+
+  override fun sub(other : Value) : Pair<Value, Error?> {
+    if (other is Number) {
+      val index = if (other.value < 0) (other.value + this.value.length).toInt() else (other.value).toInt()
+      val new_string = Str(this.value.substring(index)).set_pos(this.pos_end!!.copy(), this.pos_end!!.copy()).set_context(this.context)
+      return Pair(new_string, null)
+    }
+    return Pair(emptyValue, this.illegal_operation(other))
+  }
+
+  override fun mul(other : Value) : Pair<Value, Error?> {
+    if (other is Number) {
+      val new_number = Str(this.value.repeat(other.value.toInt())).set_pos(this.pos_end!!.copy(), this.pos_end!!.copy()).set_context(this.context)
+      return Pair(new_number, null)
+    }
+    return Pair(emptyValue, this.illegal_operation(other))
+  }
+
+  override fun div(other : Value) : Pair<Value, Error?> {
+    if (other is Number) {
+      val index = if (other.value < 0) (other.value + this.value.length).toInt() else (other.value).toInt()
+      if (this.value[index] != null){
+        val item = Str(this.value[index].toString()).set_pos(this.pos_start!!, this.pos_end!!).set_context(this.context!!)
+        return Pair(item, null)
+      } else {
+        return Pair(emptyValue, RTError(
+          this.pos_start, this.pos_end,
+          this.context!!,
+          "List has ${this.value.length} elements as ${this.value} but ${other.value} was retrieved"
+          ))
+      }
+    }
+    return Pair(emptyValue, this.illegal_operation(other))
+  }
+
+  override fun ne(other : Value) : Pair<Value, Error?> {
+    if (other is Str) {
+      val new_number = Bool(this.value != other.value).set_pos(this.pos_end!!.copy(), this.pos_end!!.copy()).set_context(this.context)
+      return Pair(new_number, null)
+    }
+    return Pair(emptyValue, this.illegal_operation(other))
+  }
+
+  override fun ee(other : Value) : Pair<Value, Error?> {
+    if (other is Str) {
+      val new_number = Bool(this.value == other.value).set_pos(this.pos_end!!.copy(), this.pos_end!!.copy()).set_context(this.context)
+      return Pair(new_number, null)
+    }
+    return Pair(emptyValue, this.illegal_operation(other))
+  }
+
+  override fun is_true() : Boolean {
+    return this.value.length != 0
+  }
+
+  override fun copy() : Value {
+    val ret_copy = Str(this.value)
+    ret_copy.set_pos(this.pos_start, this.pos_end)
+    ret_copy.set_context(this.context)
+    return ret_copy
+  }
+
+  override fun toString() : String {
+    return "${this.value}"
+  }
+}
+
 class list(elements : MutableList<Value>, scope : Context) : Value() {
     val value = elements
     var scope = scope
@@ -1807,6 +1934,10 @@ class FunDeclarator() : Visitor<MutableList<Node>> {
     return emptyNodeList()
   }
 
+  override fun visit(node : StringNode, context : Context) : MutableList<Node> {
+    return emptyNodeList()
+  }
+
   override fun visit(node : ListNode, context : Context) : MutableList<Node> {
     return emptyNodeList()
   }
@@ -1895,6 +2026,10 @@ class FunDeclarator() : Visitor<MutableList<Node>> {
 class Interpreter() : Visitor<RTResult> {
   override fun visit(node : NumberNode, context : Context) : RTResult {
     return RTResult().success(Number(node.number.toFloat()).set_pos(node.pos_start, node.pos_end).set_context(context), context)
+  }
+
+  override fun visit(node : StringNode, context : Context) : RTResult {
+    return RTResult().success(Str(node.string).set_pos(node.pos_start, node.pos_end).set_context(context), context)
   }
 
   override fun visit(node : ListNode, context : Context) : RTResult {
