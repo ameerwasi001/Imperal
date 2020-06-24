@@ -2,7 +2,7 @@
 A purely functional, and imperative programming language.
 
 # How? and What?
-The first question that would come to anybody's mind after hearing that a language is both imperative and purely functonal is hwo would thst work. If you understand monads, you probably already know what's going on but let me just make a simple expression that allows two expresssions to be chained together.
+The first question that would come to anybody's mind after hearing that a language is both imperative and purely functonal is how would that work? If you understand monads, you probably already know what's going on but let me just make a simple expression that allows two expresssions to be chained together.
 ```
 when (x=2) then (x+8)
 ```
@@ -115,14 +115,14 @@ x = 5
 fun addx: n -> x+n
 addx: 5
 ```
-It would return 1 but even if we say,
+It would return 10 but even if we say,
 ```
 x = 5
 fun addx: n -> x+n
 x = 6
 addx: 5
 ```
-it would still return 1 because of referential transparency.
+it would still return 10 because of referential transparency.
 
 You can have mutually recursive functions both openly and in lists.
 ```
