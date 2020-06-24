@@ -1712,6 +1712,18 @@ class ContextObj(map : MutableMap<String, Value>, parent_context : Context, pos_
       }
     }
 
+    override fun div(other : Value) : Pair<Value, Error?> {
+      if (other is Str) {
+        val value = this.sys_context.symbol_table.get(other.value)
+        if (value != null){
+          return Pair(value, null)
+        } else {
+          return Pair(nullValue, null)
+        }
+      }
+      return Pair(emptyValue, this.illegal_operation(other))
+    }
+
     fun truth_of_map(other: Value) : Boolean {
       var truth_value = 0
       if (other is ContextObj){
