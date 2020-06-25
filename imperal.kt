@@ -2262,6 +2262,7 @@ class Interpreter() : Visitor<RTResult> {
     val identifier = node.identifier.value!!
     var assignment_context = context
     val (expr, _) = res.register(node.expr.accept(this, assignment_context))
+    val re_init_error = RTError(node.pos_start, node.pos_end, context, "Cannot re-initialize the variable '${identifier}'")
     if (res.error != null){ return res }
     if (context.symbol_table.specContains(identifier) || expr is ContextObj){
       val new_symbol_table = SymbolTable(assignment_context.symbol_table.copy())
@@ -2273,15 +2274,12 @@ class Interpreter() : Visitor<RTResult> {
         val fun_value = found_table!!.get(identifier)
         if (fun_value is Function && !fun_value.init){
           fun_value.initialize(expr.body_node, expr.arg_names, expr.scope, expr.should_auto_return)
+        } else if (fun_value is Function && fun_value.init && node.is_topLevel){
+          return res.failure(re_init_error)
         }
       }
-    }
-    if (contains && node.is_topLevel){
-      return res.failure(RTError(
-        node.pos_start, node.pos_end,
-        context,
-        "Cannot re-initialize the variable '${identifier}'"
-        ))
+    } else if (contains && node.is_topLevel){
+      return res.failure(re_init_error)
     }
     assignment_context.symbol_table.set(identifier, expr)
     if (expr is Function){
