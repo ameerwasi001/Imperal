@@ -16,19 +16,27 @@ Did you catch it? We just did what seems like a mutation there, while keeping ev
 I don't know either...
 
 # Variables
-Creating a variable is really simple and works exactly how you would expect it to work from an imperative background
+There are two types of variables, immutable top-level declarations and umm... variables. I mean that the variables you declare on top-level such as the one that follows
 ```
 x = 100
 ```
-You can re-assign the variable,
+cannot be re-assigned as these variables are syntactically immutable,
 ```
 x = 3
 ```
-Now, the re-assignment just makes up a new context where x is something else and the old x is preserved under the new one.
-Access doesn't have anything fancy either ou just go,
+but on the other hand the normal variables are only semantically immutable and can be assigned and reassigned inside top-level declarations such as what follows
+```
+main = {
+  x = 3
+  x = x+1
+}
+```
+Now, this sort of re-assignment is semantically immutable because it just makes up a new context where x is something else and the old x is preserved under the new one.
+Variable access doesn't have anything fancy going on it's just like how you'd expect,
 ```
 x
 ```
+This returns x from the nearest context.
 
 # If-else
 This is simple, it doesn't nessecarily do anything significantly different from a normal if-else from any language and works as what follows
@@ -54,10 +62,10 @@ while x<10 {
   x = x+1
 }
 ```
-Here the while loop get's a new x in a different context every time it loops so iteration works seemlessly with other imperative programming languages.
+Here this while loop get's a new x in a different context every time it loops so iteration syntactically works seemlessly with other imperative programming languages.
 
 # Lists
-Lists are wat you's expect them to be from a standard programming language but with a few quirks. Let's begin ith an example,
+Lists are what you's expect them to be from a standard programming language but with a few quirks. Let's begin with an example,
 ```
 nums = [1, 3, 5, 7]
 ```
