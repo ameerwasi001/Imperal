@@ -41,7 +41,7 @@ This returns x from the nearest context.
 # If-else
 This is simple, it doesn't nessecarily do anything significantly different from a normal if-else from any language and works as what follows
 ```
-if x==3 {
+main = if x==3 {
   x = x+1
 } else if x<0 {
   x = x+5
@@ -57,9 +57,11 @@ x+5 if x==5 else x*x
 # While-loops
 While loops work on the same concept of making up a new context every time the value of a variable changes, for example
 ```
-x = 0
-while x<10 {
-  x = x+1
+main = {
+  x = 0
+  while x<10 {
+    x = x+1
+  }
 }
 ```
 Here this while loop get's a new x in a different context every time it loops so iteration syntactically works seemlessly with other imperative programming languages.
