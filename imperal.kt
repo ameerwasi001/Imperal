@@ -272,7 +272,6 @@ class Lexer(fn : String, text : String){
 
     fun generate_tokens() : Pair<MutableList<Token>, Error?> {
       val tokens = mutableListOf<Token>()
-      tokens.add(Token(TT_RCURLY, null, this.pos, null))
       while (this.current_char != null){
         if (whitespaces.contains(this.current_char.toString())){
               this.advance()
@@ -342,7 +341,6 @@ class Lexer(fn : String, text : String){
           return Pair(toks, IllegalCharacterError(pos_start, this.pos.copy(), "'$char'"))
         }
     }
-    tokens.add(Token(TT_LCURLY, null, this.pos, null))
     tokens.add(Token(TT_EOF, null, this.pos, null))
     return Pair(tokens, null)
   }
@@ -463,9 +461,10 @@ class UnaryOpNode(op_tok : Token, factor : Node, pos_start : Position, pos_end :
   }
 }
 
-class VarAssignNode(identifier : Token, expr : Node, pos_start : Position, pos_end : Position) : Node {
+class VarAssignNode(identifier : Token, expr : Node, is_topLevel : Boolean, pos_start : Position, pos_end : Position) : Node {
   public val identifier = identifier
   public val expr = expr
+  public val is_topLevel = is_topLevel
   public val pos_start = pos_start
   public val pos_end = pos_end
 
@@ -699,14 +698,54 @@ class Parser(tokens : MutableList<Token>){
   }
 
   fun parse() : ParseResult {
-    val res = this.statement(true)
-    if (res.error != null || this.current_tok!!.type_ != TT_EOF){
+    val res = this.declarations()
+    if (res.error == null && this.current_tok!!.type_ != TT_EOF){
       return res.failure(InvalidSyntaxError(
           this.current_tok!!.pos_start, this.current_tok!!.pos_end,
           "Expected '*', '/', '+', or '-'"
         ))
     }
     return res
+  }
+
+  fun declarations() : ParseResult {
+    val res = ParseResult()
+    val declarations = mutableListOf<Node>()
+    val pos_start = this.current_tok!!.pos_start.copy()
+    while (this.current_tok!!.type_ != TT_EOF){
+      while (this.current_tok!!.type_ == TT_NEWLINE){
+        this.advance()
+      }
+      if (this.current_tok!!.type_ == TT_EOF) { break }
+      declarations.add(res.register(this.declaration()))
+      if (res.error != null) { return res }
+    }
+    return res.success(StatementsNode(declarations, true, pos_start, this.current_tok!!.pos_end))
+  }
+
+  fun declaration() : ParseResult {
+    val res = ParseResult()
+    val pos_start = this.current_tok!!.pos_start.copy()
+    if (this.current_tok!!.type_ != TT_IDENTIFIER){
+      return res.failure(InvalidSyntaxError(
+        pos_start, this.current_tok!!.pos_end,
+        "Expected an identifier"
+        ))
+    }
+    val var_name = this.current_tok!!
+    res.register_advancement()
+    this.advance()
+    if (this.current_tok!!.type_ != TT_EQUALS){
+      return res.failure(InvalidSyntaxError(
+        pos_start, this.current_tok!!.pos_end,
+        "Expected '='"
+        ))
+    }
+    res.register_advancement()
+    this.advance()
+    val stmnt = res.register(this.statement(true))
+    if (res.error != null) { return res }
+    return res.success(VarAssignNode(var_name, stmnt, true, pos_start, this.current_tok!!.pos_end.copy()))
   }
 
   fun statements(may_decl: Boolean) : ParseResult {
@@ -761,7 +800,7 @@ class Parser(tokens : MutableList<Token>){
       this.advance()
       val expr = res.register(this.expr())
       if (res.error != null) { return res }
-      return res.success(VarAssignNode(var_name, expr, pos_start, this.current_tok!!.pos_end.copy()))
+      return res.success(VarAssignNode(var_name, expr, false, pos_start, this.current_tok!!.pos_end.copy()))
     } else if (this.current_tok!!.matches(TT_KEYWORD, "if")){
       val expr = res.register(if_statement())
       if (res.error != null) { return res }
@@ -1970,7 +2009,7 @@ class FunDeclarator() : Visitor<MutableList<Node>> {
       val declNode = FunDeclNode(identifier, body, node.pos_start, node.pos_end)
       return mutableListOf<Node>(declNode)
     }
-    return return node.expr.accept(this, context)
+    return node.expr.accept(this, context)
   }
 
   override fun visit(node : StatementsNode, context : Context) : MutableList<Node> {
@@ -2228,14 +2267,21 @@ class Interpreter() : Visitor<RTResult> {
       val new_symbol_table = SymbolTable(assignment_context.symbol_table.copy())
       assignment_context = Context(identifier, new_symbol_table, assignment_context, node.pos_start)
     }
+    val (contains, found_table) = assignment_context.symbol_table.contains(identifier)
     if (expr is Function){
-      val (contains, found_table) = assignment_context.symbol_table.contains(identifier)
       if (contains){
         val fun_value = found_table!!.get(identifier)
         if (fun_value is Function && !fun_value.init){
           fun_value.initialize(expr.body_node, expr.arg_names, expr.scope, expr.should_auto_return)
         }
       }
+    }
+    if (contains && node.is_topLevel){
+      return res.failure(RTError(
+        node.pos_start, node.pos_end,
+        context,
+        "Cannot re-initialize the variable '${identifier}'"
+        ))
     }
     assignment_context.symbol_table.set(identifier, expr)
     if (expr is Function){
