@@ -2489,10 +2489,8 @@ class Interpreter() : Visitor<RTResult> {
             ))
         }
       }
-      current_context = current_context.copy()
       current_context = Context(random_str(), new_symbol_table, null, null)
     }
-    println(new_symbol_table)
     return res.success(ContextObj(hashmap, current_context.copy(), node.pos_start, node.pos_end).set_pos(node.pos_start, node.pos_end).set_context(context), context)
   }
 
