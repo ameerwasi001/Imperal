@@ -1,4 +1,19 @@
 x = 0
+
+Person = fun: fn, sn -> sencap {
+  firstName = fn
+  lastName = sn
+
+  define say = firstName + " " +  lastName
+}
+
+Dog = fun: fn, sn -> sencap {
+  firstName = fn
+  lastName = sn
+
+  define say = "Bark"
+}
+
 main = {
   define y = 8
 
@@ -6,11 +21,11 @@ main = {
     x = x+1
   }
 
-  env = encap {
+  env = sencap {
     define term = inc: 4
     sub = [(fun: a, b -> a-b), 3]
     fun inc: n -> n+1
-    res = sub/0: y!, 2
+    res = sub/0: y!, sub/1
     x = term!
   }
 
@@ -28,5 +43,14 @@ main = {
 
   fun add: a -> fun: b -> a+b
 
-  fac: x
+  john = Person: "John", "Williams"
+  john => say!
+
+  bill = Person: "Bill", "Nai"
+  bill => say!
+
+  tommy = Dog: "tommy", null
+  tommy => say!
+
+  fac: env => x
 }
