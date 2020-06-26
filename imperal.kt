@@ -47,7 +47,8 @@ val KEYWORDS = listOf(
   "for",
   "in",
   "define",
-  "encap"
+  "encap",
+  "sencap"
 )
 
 class Position(idx : Int, ln : Int, col : Int, fn : String, ftxt : String){
@@ -602,8 +603,9 @@ class ForNode(identifier : Token, list_expr : Node, body : Node, is_expr : Boole
   }
 }
 
-class EncapNode(statements : Node, pos_start : Position, pos_end : Position) : Node {
+class EncapNode(statements : Node, is_sencap : Boolean, pos_start : Position, pos_end : Position) : Node {
   public val statements = statements
+  public val is_sencap = is_sencap
   public val pos_start = pos_start
   public val pos_end = pos_end
 
@@ -1091,7 +1093,8 @@ class Parser(tokens : MutableList<Token>){
         val expr = res.register(this.fun_expr(false))
         if (res.error != null) { return res }
         return res.success(expr)
-    } else if (this.current_tok!!.matches(TT_KEYWORD, "encap")){
+    } else if (this.current_tok!!.matches(TT_KEYWORD, "encap") || this.current_tok!!.matches(TT_KEYWORD, "sencap")){
+        val is_sencap = this.current_tok!!.value!! == "sencap"
         res.register_advancement()
         this.advance()
         if (this.current_tok!!.type_ != TT_RCURLY){
@@ -1102,7 +1105,7 @@ class Parser(tokens : MutableList<Token>){
         }
         val statements = res.register(this.statement(true))
         if (res.error != null) { return res }
-        return res.success(EncapNode(statements, pos_start, this.current_tok!!.pos_end.copy()))
+        return res.success(EncapNode(statements, is_sencap, pos_start, this.current_tok!!.pos_end.copy()))
     } else if (this.current_tok!!.type_ == TT_RSQUARE){
         val expr = res.register(this.list_expr())
         if (res.error != null) { return res }
@@ -1238,12 +1241,13 @@ class Parser(tokens : MutableList<Token>){
 
 class SymbolTable(parent : SymbolTable? = null){
   public var symbol_table = mutableMapOf<String, Value>()
-  public val parent = parent
+  public var parent = parent
 
   fun get(name : String) : Value? {
       var output = this.symbol_table[name]
-      if ((output == null) && (this.parent != null)){
-        output = this.parent.get(name)
+      val parent = this.parent
+      if ((output == null) && (parent != null)){
+        output = parent.get(name)
       }
       return output
     }
@@ -1265,8 +1269,9 @@ class SymbolTable(parent : SymbolTable? = null){
   fun contains(name : String) : Pair<Boolean, SymbolTable?> {
     var got = this.symbol_table[name] != null
     var found_table = if (got) this else null
-    if ((!got) && (this.parent != null)){
-      val (found, ret_output) = this.parent.contains(name)
+    val parent = this.parent
+    if ((!got) && (parent != null)){
+      val (found, ret_output) = parent.contains(name)
       if (found){
         got = found
         found_table = ret_output
@@ -1289,9 +1294,14 @@ class SymbolTable(parent : SymbolTable? = null){
 
 open class Context(display_name : String, symbol_table : SymbolTable, parent : Context? = null, parent_entry_pos : Position? = null){
   public val display_name = display_name
+  public val id = context_count
   public val symbol_table = symbol_table
   public val parent = parent
   public val parent_entry_pos = parent_entry_pos
+
+  init {
+    context_count += 1
+  }
 
   fun copy() : Context {
     val new_context = Context(this.display_name, this.symbol_table.copy(), this.parent, this.parent_entry_pos)
@@ -1306,6 +1316,8 @@ open class Context(display_name : String, symbol_table : SymbolTable, parent : C
 class ErrorContext() : Context("Error", SymbolTable(), null, null){}
 
 val errorContext = ErrorContext()
+
+var context_count = 0
 
 open class Value() {
   open var pos_start : Position? = null
@@ -2458,7 +2470,30 @@ class Interpreter() : Visitor<RTResult> {
     val (_, new_context) = res.register(node.statements.accept(this, context))
     if (res.should_return()) { return res }
     val hashmap = new_context.symbol_table.symbol_table.toMutableMap()
-    return res.success(ContextObj(hashmap, new_context.copy(), node.pos_start, node.pos_end).set_pos(node.pos_start, node.pos_end).set_context(context), context)
+    var current_context = new_context
+    var new_symbol_table = SymbolTable()
+    if (node.is_sencap){
+      var max_depth = 1000
+      var current_depth = 0
+      while (context.id != current_context.id){
+        if (current_context.parent == null){ return res.failure(RTError(node.pos_start, node.pos_end, current_context, "Fuck, that wasn't supposed to happen")) }
+        new_symbol_table.parent = current_context.symbol_table
+        new_symbol_table.parent!!.parent = null
+        current_context = current_context.parent!!
+        current_depth += 1
+        if (current_depth > max_depth){
+          return res.failure(RTError(
+            node.pos_start, node.pos_end,
+            current_context,
+            "Map depth of context nesting allowed inside Sencaps exceeded"
+            ))
+        }
+      }
+      current_context = current_context.copy()
+      current_context = Context(random_str(), new_symbol_table, null, null)
+    }
+    println(new_symbol_table)
+    return res.success(ContextObj(hashmap, current_context.copy(), node.pos_start, node.pos_end).set_pos(node.pos_start, node.pos_end).set_context(context), context)
   }
 
   override fun visit(node: FunDeclNode, context : Context) : RTResult {
