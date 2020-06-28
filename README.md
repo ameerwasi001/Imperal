@@ -1,12 +1,12 @@
 # Imperal
-A (Alomst) purely functional, dynamic, and imperative programming language?
+A purely(Almost) functional, dynamic, and imperative programming language?
 
 # How? and What?
-The first question that would come to anybody's mind after hearing that a language is both imperative and purely functonal is how would that work? If you understand let constructs in functional programming languages then the following would be easy to follow, but let me just make a simple expression, for those unawarre, that allows two expresssions to be chained together.
+The first question that would come to anybody's mind after hearing that a language is both imperative and purely functional is how would that work? If you understand let constructs in functional programming languages then the following would be easy to follow, but let me just make a simple expression, for those unaware, that allows two expressions to be chained together.
 ```
 when (x=2) then (x+8)
 ```
-This expression would result in 10 because in the first part we create a new environment where we set a variable namely x, to be equal to 2, then in the second part we create another environment that's chained to the frst one. Meaning it has access to all of the variables in the former environment. This language Imperal is nothing but this concept taken to another extreme level. Every statement in this language is just
+This expression would result in 10 because in the first part we create a new environment where we set a variable namely x, to be equal to 2, then in the second part, we create another environment that's chained to the first one. Meaning it has access to all of the variables in the former environment. This language Imperal is nothing but this concept taken to another extreme level. Every statement in this language is just
 ```
 when (x=2) then (when(y=3) then (when (y = x+y) then (y)))
 ```
@@ -24,7 +24,7 @@ cannot be re-assigned as these variables are syntactically immutable,
 ```
 x = 3
 ```
-but on the other hand the normal variables are only semantically immutable and can be assigned and reassigned inside top-level declarations such as what follows
+but on the other hand, the normal variables are only semantically immutable and can be assigned and reassigned inside top-level declarations such as what follows
 ```
 main = {
   x = 3
@@ -49,7 +49,7 @@ main = if x==3 {
   x = x*x
 }
 ```
-Code says it all, what else do you want me to say. There's also a pythonish if-expr and that works as follows,
+Code says it all, what else do you want me to say. There's also a pythonic if-expression and that works as follows,
 ```
 x+5 if x==5 else x*x
 ```
@@ -64,10 +64,10 @@ main = {
   }
 }
 ```
-Here this while loop get's a new x in a different context every time it loops so iteration syntactically works seemlessly with other imperative programming languages.
+Here this while loop gets a new x in a different context every time it loops so iteration syntactically works seamlessly with other imperative programming languages.
 
 # Lists
-Lists are what you's expect them to be from a standard programming language but with a few quirks. Let's begin with an example,
+Lists are what you expect them to be from a standard programming language but with a few quirks. Let's begin with an example,
 ```
 nums = [1, 3, 5, 7]
 ```
@@ -84,21 +84,20 @@ for num in nums{
   i = num+1
 }
 ```
-Here for loop creates an inner environment for it's code block to execte in, but bases the environment on the last environment returned by the last iteration. Similarly we have a concept of python-like list comprehensions an they are as what folllows
+Here for loop creates an inner environment for its code block to execute in, but bases the environment on the last environment returned by the last iteration. Similarly, we have a concept of python-like list comprehensions and they are as what follows
 ```
 num+1 for num in nums
 ```
-In Python you can also add a if-statement at the end and the same can be done here,
+In Python, you can also add an if-statement at the end and the same can be done here,
 ```
 num+1 for num in nums -> if num!=5
 ```
 which works as a sort of filter function.
 
 # Functions
-Caution: These do something interna that might be considered Impure. More specifically interpreter forward declares them at the beginning of a particular context and they iterally get changed when they are initiaized. It is something that might be considered straight-up impure but who am I to say? Let's continue.
-Here we get to referential transparency, remember when I said that when you change a variable, the last form of it is preserved. It meant that the functions of that time have the exact copy of the environment that we provided before changing environment so, they won't return different outputs for the same inputs.
+Caution: These do something internally that might be considered Impure. More specifically the interpreter forward declares them at the beginning of a particular context and they literally get changed when they are initialized. It is something that might be considered straight-up impure but who am I to say? Let's continue.
 
-They can be defined as what follows,
+Here we get to referential transparency, remember when I said that when you change a variable, the last form of it is preserved. It meant that the functions of that time have the exact copy of the environment that we provided before changing the environment so, they won't return different outputs for the same inputs. They can be defined as what follows,
 ```
 fun add: a, b {
   return a+b
@@ -108,7 +107,7 @@ or to make it shorter
 ```
 fun add: a, b -> a+b
 ```
-and not to mention that you an have both of these forms as simple variables
+and not to mention that you have both of these forms as simple variables
 ```
 add = fun: a, b {
   return a+b
@@ -172,7 +171,7 @@ env => n
 ```
 
 ## Sencap
-Sencap or Shallow Encapsulation is basically encap but with a singe difference, it only captures environment in the given curly braces, it won't catch your creation environment so they are in a  way more object-like then encapsulations. For example if I do,
+Sencap or Shallow Encapsulation is basically encap but with a single difference, it only captures the environment in the given curly braces, it won't catch your creation environment so they are in a way more object-like then encapsulations. For example, if I do,
 ```
 x = 5
 env = encap {
@@ -204,7 +203,7 @@ envGen = fun: a, b, c -> sencap {
   define total = a+b+c
 }
 ```
-For every generated Sencap a, b, and c will be precompputed so that you woun't require to access the outside sencap environment as for, define or any other function definition, they wil be computed when objects call them like total isn't a number sitting there, in the example above but it's rather an equation that will be evaluated when called by a sencap for example,
+For every generated Sencap a, b, and c will be precomputed so that you wouldn't require to access the outside sencap environment as for, define or any other function definition, they will be computed when objects call them like total isn't a number sitting there, in the example above but it's rather an equation that will be evaluated when called by a sencap for example,
 ```
 env = envGen: 2, 9, 5
 env => total!
