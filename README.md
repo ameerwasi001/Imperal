@@ -170,4 +170,44 @@ env = envGen: 3, 6, 9
 env => a
 env => n
 ```
+
+## Sencap
+Sencap or Shallow Encapsulation is basically encap but with a singe difference, it only captures environment in the given curly braces, it won't catch your creation environment so they are in a  way more object-like then encapsulations. For example if I do,
+```
+x = 5
+env = encap {
+  a = "Encapsulation"
+}
+```
+I can later access
+```
+env => x
+```
+and get 5 but with Shallow Encapsulation I can do
+```
+x = 5
+env = sencap {
+  a = "Shallow Encapsulation"
+}
+```
+and then try to access x
+```
+env => x
+```
+then I would get an error.
+Making class-like structurs is similar with sencaps, you could just do what follows
+```
+envGen = fun: a, b, c -> sencap {
+  a = a
+  b = b
+  c = c
+  define total = a+b+c
+}
+```
+For every generated Sencap a, b, and c will be precompputed so that you woun't require to access the outside sencap environment as for, define or any other function definition, they wil be computed when objects call them like total isn't a number sitting there, in the example above but it's rather an equation that will be evaluated when called by a sencap for example,
+```
+env = envGen: 2, 9, 5
+env => total!
+```
+would result in 16.
 Thanks for reading through and maybe play around with the language when you're free.
