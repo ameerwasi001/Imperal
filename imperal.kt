@@ -46,6 +46,7 @@ val KEYWORDS = listOf(
   "return",
   "for",
   "in",
+  "as",
   "define",
   "encap",
   "sencap"
@@ -603,8 +604,9 @@ class ForNode(identifier : Token, list_expr : Node, body : Node, is_expr : Boole
   }
 }
 
-class EncapNode(statements : Node, is_sencap : Boolean, pos_start : Position, pos_end : Position) : Node {
+class EncapNode(statements : Node, encap_name: String, is_sencap : Boolean, pos_start : Position, pos_end : Position) : Node {
   public val statements = statements
+  public val encap_name = encap_name
   public val is_sencap = is_sencap
   public val pos_start = pos_start
   public val pos_end = pos_end
@@ -1094,6 +1096,7 @@ class Parser(tokens : MutableList<Token>){
         if (res.error != null) { return res }
         return res.success(expr)
     } else if (this.current_tok!!.matches(TT_KEYWORD, "encap") || this.current_tok!!.matches(TT_KEYWORD, "sencap")){
+        var encap_name = ""
         val is_sencap = this.current_tok!!.value!! == "sencap"
         res.register_advancement()
         this.advance()
@@ -1105,7 +1108,20 @@ class Parser(tokens : MutableList<Token>){
         }
         val statements = res.register(this.statement(true))
         if (res.error != null) { return res }
-        return res.success(EncapNode(statements, is_sencap, pos_start, this.current_tok!!.pos_end.copy()))
+        if (this.current_tok!!.matches(TT_KEYWORD, "as")){
+          res.register_advancement()
+          this.advance()
+          if (this.current_tok!!.type_ != TT_IDENTIFIER){
+            return res.failure(InvalidSyntaxError(
+              this.current_tok!!.pos_start, this.current_tok!!.pos_end,
+              "Expected an identifier"
+              ))
+          }
+          encap_name = this.current_tok!!.value!!
+          res.register_advancement()
+          this.advance()
+        }
+        return res.success(EncapNode(statements, encap_name, is_sencap, pos_start, this.current_tok!!.pos_end.copy()))
     } else if (this.current_tok!!.type_ == TT_RSQUARE){
         val expr = res.register(this.list_expr())
         if (res.error != null) { return res }
@@ -1745,8 +1761,9 @@ class list(elements : MutableList<Value>, scope : Context) : Value() {
     }
 }
 
-class ContextObj(map : MutableMap<String, Value>, parent_context : Context, pos_start : Position, pos_end : Position) : Value() {
+class ContextObj(map : MutableMap<String, Value>, types : MutableList<String>, parent_context : Context, pos_start : Position, pos_end : Position) : Value() {
     public val value = map
+    public val types = types
     public val symbol_table = SymbolTable(parent_context.symbol_table).set_table(map)
     public val unused = this.set_pos(pos_start, pos_end)
     public val parent_context = parent_context
@@ -1756,7 +1773,10 @@ class ContextObj(map : MutableMap<String, Value>, parent_context : Context, pos_
       if (other is ContextObj){
         val new_map = this.value.toMutableMap()
         new_map.putAll(other.value)
-        val new_map_obj = ContextObj(new_map, this.parent_context, this.pos_start!!, this.pos_end!!).set_pos(this.pos_end!!.copy(), this.pos_end!!.copy()).set_context(this.context)
+        val new_types = mutableListOf<String>()
+        new_types.addAll(this.types)
+        new_types.addAll(other.types)
+        val new_map_obj = ContextObj(new_map, new_types, this.parent_context, this.pos_start!!, this.pos_end!!).set_pos(this.pos_end!!.copy(), this.pos_end!!.copy()).set_context(this.context)
         return Pair(new_map_obj, null)
       } else {
         return Pair(emptyValue, this.illegal_operation())
@@ -1813,14 +1833,16 @@ class ContextObj(map : MutableMap<String, Value>, parent_context : Context, pos_
     }
 
     override fun copy() : Value {
-      val ret_copy = ContextObj(this.value, parent_context, this.pos_start!!, this.pos_end!!)
+      val new_types = mutableListOf<String>()
+      new_types.addAll(this.types)
+      val ret_copy = ContextObj(this.value.toMutableMap(), new_types, parent_context.copy(), this.pos_start!!, this.pos_end!!)
       ret_copy.set_pos(this.pos_start, this.pos_end)
       ret_copy.set_context(this.context)
       return ret_copy
     }
 
     override fun toString() : String {
-      return "${this.value}"
+      return "<${if (this.types == mutableListOf<String>()) "Anonymous" else this.types[this.types.size - 1]} Instance>"
     }
 }
 
@@ -2491,7 +2513,8 @@ class Interpreter() : Visitor<RTResult> {
       }
       current_context = Context(random_str(), new_symbol_table, null, null)
     }
-    return res.success(ContextObj(hashmap, current_context.copy(), node.pos_start, node.pos_end).set_pos(node.pos_start, node.pos_end).set_context(context), context)
+    val encap_types = if (node.encap_name == "") mutableListOf<String>() else mutableListOf<String>(node.encap_name)
+    return res.success(ContextObj(hashmap, encap_types, current_context.copy(), node.pos_start, node.pos_end).set_pos(node.pos_start, node.pos_end).set_context(context), context)
   }
 
   override fun visit(node: FunDeclNode, context : Context) : RTResult {
