@@ -210,4 +210,5 @@ env = envGen: 2, 9, 5
 env => total!
 ```
 would result in 16.
+
 Thanks for reading through and maybe play around with the language when you're free.
