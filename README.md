@@ -1,5 +1,5 @@
 # Imperal
-A (Alomst)purely functional, dynamic, and imperative programming language?
+A (Alomst) purely functional, dynamic, and imperative programming language?
 
 # How? and What?
 The first question that would come to anybody's mind after hearing that a language is both imperative and purely functonal is how would that work? If you understand let constructs in functional programming languages then the following would be easy to follow, but let me just make a simple expression, for those unawarre, that allows two expresssions to be chained together.
