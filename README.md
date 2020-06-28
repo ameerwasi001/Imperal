@@ -1,8 +1,8 @@
 # Imperal
-A purely functional, and imperative programming language.
+A (Alomst)purely functional, dynamic, and imperative programming language?
 
 # How? and What?
-The first question that would come to anybody's mind after hearing that a language is both imperative and purely functonal is how would that work? If you understand monads, you probably already know what's going on but let me just make a simple expression that allows two expresssions to be chained together.
+The first question that would come to anybody's mind after hearing that a language is both imperative and purely functonal is how would that work? If you understand let constructs in functional programming languages then the following would be easy to follow, but let me just make a simple expression, for those unawarre, that allows two expresssions to be chained together.
 ```
 when (x=2) then (x+8)
 ```
@@ -10,7 +10,7 @@ This expression would result in 10 because in the first part we create a new env
 ```
 when (x=2) then (when(y=3) then (when (y = x+y) then (y)))
 ```
-Did you catch it? We just did what seems like a mutation there, while keeping everything functionally pure. We never altered the state we just made a new one up and starting referencing it instead.
+Did you catch it? We just did what seems like a mutation there, while keeping everything functionally pure. We never altered the state we just made a new one up and starting referencing it instead. This is just the extension of this concept to an extreme end. I am basically stretching the term to a point where it becomes practically meaningless but the experiment continues...
 
 # Why
 I don't know either...
@@ -95,6 +95,7 @@ num+1 for num in nums -> if num!=5
 which works as a sort of filter function.
 
 # Functions
+Caution: These do something interna that might be considered Impure. More specifically interpreter forward declares them at the beginning of a particular context and they iterally get changed when they are initiaized. It is something that might be considered straight-up impure but who am I to say? Let's continue.
 Here we get to referential transparency, remember when I said that when you change a variable, the last form of it is preserved. It meant that the functions of that time have the exact copy of the environment that we provided before changing environment so, they won't return different outputs for the same inputs.
 
 They can be defined as what follows,
