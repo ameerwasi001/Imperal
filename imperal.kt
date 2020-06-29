@@ -47,6 +47,7 @@ val KEYWORDS = listOf(
   "for",
   "in",
   "as",
+  "prev",
   "define",
   "encap",
   "sencap"
@@ -366,6 +367,7 @@ interface Visitor<out R>{
   fun visit(node: ListNode, context : Context): R
   fun visit(node: ForNode, context : Context): R
   fun visit(node: EncapNode, context : Context): R
+  fun visit(node: PrevNode, context : Context): R
 }
 
 interface Node {
@@ -461,6 +463,21 @@ class UnaryOpNode(op_tok : Token, factor : Node, pos_start : Position, pos_end :
   override fun toString() : String {
         return "(${this.op_tok.toString()} ${this.factor.toString()})"
   }
+}
+
+class PrevNode(expression : Node, pos_start : Position, pos_end : Position) : Node {
+  public val expression = expression
+  public val pos_start = pos_start
+  public val pos_end = pos_end
+
+  override fun <R> accept(visitor : Visitor<R>, context : Context) : R {
+    return visitor.visit(this, context)
+  }
+
+  override fun toString() : String {
+        return "prev ${this.expression.toString()}"
+  }
+
 }
 
 class VarAssignNode(identifier : Token, expr : Node, is_topLevel : Boolean, pos_start : Position, pos_end : Position) : Node {
@@ -1095,6 +1112,12 @@ class Parser(tokens : MutableList<Token>){
         val expr = res.register(this.fun_expr(false))
         if (res.error != null) { return res }
         return res.success(expr)
+    } else if (this.current_tok!!.matches(TT_KEYWORD, "prev")){
+        res.register_advancement()
+        this.advance()
+        val expr = res.register(this.expr())
+        if (res.error != null) { return res }
+        return res.success(PrevNode(expr, pos_start, this.current_tok!!.pos_end))
     } else if (this.current_tok!!.matches(TT_KEYWORD, "encap") || this.current_tok!!.matches(TT_KEYWORD, "sencap")){
         var encap_name = ""
         val is_sencap = this.current_tok!!.value!! == "sencap"
@@ -2035,6 +2058,10 @@ class FunDeclarator() : Visitor<MutableList<Node>> {
     return emptyNodeList()
   }
 
+  override fun visit(node : PrevNode, context : Context) : MutableList<Node> {
+    return node.expression.accept(this, context)
+  }
+
   override fun visit(node : VarAssignNode, context : Context) : MutableList<Node> {
     if (node.expr is FunDefNode){
       val identifier = node.identifier.value!!
@@ -2515,6 +2542,21 @@ class Interpreter() : Visitor<RTResult> {
     }
     val encap_types = if (node.encap_name == "") mutableListOf<String>() else mutableListOf<String>(node.encap_name)
     return res.success(ContextObj(hashmap, encap_types, current_context.copy(), node.pos_start, node.pos_end).set_pos(node.pos_start, node.pos_end).set_context(context), context)
+  }
+
+  override fun visit(node: PrevNode, context : Context) : RTResult {
+    val res = RTResult()
+    val parent_context = context.parent
+    if (parent_context != null){
+      val (value, _) = res.register(node.expression.accept(this, parent_context))
+      if (res.error != null) { return res }
+      return res.success(value, context)
+    }
+    return res.failure(RTError(
+      node.pos_start, node.pos_end,
+      context,
+      "No parent context found"
+      ))
   }
 
   override fun visit(node: FunDeclNode, context : Context) : RTResult {
