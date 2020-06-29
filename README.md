@@ -76,6 +76,16 @@ Now, if I decide to add 9 later in the list, I can't really do it with something
 nums = nums + 9
 ```
 
+# Previous versions
+A veriable's previous version can be accessed by use of the `prev` keyword like this,
+```
+x = 0
+while x<10{
+  x = x+1
+}
+x = prev x
+```
+
 # For loops
 Iterating over a list can be done via for loop, such as what follows
 ```
