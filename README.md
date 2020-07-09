@@ -220,4 +220,25 @@ env => total!
 ```
 would result in 16.
 
+## Inheritance with Encapsulations
+You can also name all kinds of encaps by expressing
+```
+john = {
+ firstName = "John"
+ secondName = "Shaw"
+ property = 100
+} as J
+```
+and to inherit from john have all it's methods avalible to you, you can say
+```
+bill = {
+ firstName = "Bill"
+} as B : john
+```
+Now if we check `Bill`'s `secondName` like this
+```
+bill => secondName
+```
+it would result in "Shaw".
+
 Thanks for reading through and maybe play around with the language when you're free.
