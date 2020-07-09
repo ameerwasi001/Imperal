@@ -2529,8 +2529,33 @@ class Interpreter() : Visitor<RTResult> {
   }
 
   override fun visit(node: EncapNode, context: Context) : RTResult {
+    fun backlink(chain: SymbolTable, link: SymbolTable) : SymbolTable {
+      var current_point : SymbolTable? = chain
+      while (current_point!!.parent != null){
+        current_point = current_point.parent
+      }
+      current_point.parent = link
+      return chain
+    }
     val res = RTResult()
-    val (_, new_context) = res.register(node.statements.accept(this, context))
+    var parent : Value = emptyValue
+    if (node.parent != null){
+      var (temp_parent, _) = res.register(node.parent.accept(this, context))
+      parent = temp_parent
+      if (res.error != null){ return res }
+      if (!(parent is ContextObj)){
+        return res.failure(RTError(
+          node.pos_start, node.pos_end,
+          context,
+          "Encaps can only inherit from other Encaps"
+          ))
+      }
+    }
+    val (_, new_context) = res.register(node.statements.accept(this,
+      if (parent is ContextObj) Context(random_str(), backlink(parent.sys_context.symbol_table, context.symbol_table), context, node.pos_start)
+      else context
+      )
+    )
     if (res.should_return()) { return res }
     val hashmap = new_context.symbol_table.symbol_table.toMutableMap()
     var current_context = new_context
@@ -2552,27 +2577,13 @@ class Interpreter() : Visitor<RTResult> {
             ))
         }
       }
-      current_context = Context(random_str(), new_symbol_table, null, null)
     }
     val encap_types = if (node.encap_name == "") mutableListOf<String>() else mutableListOf<String>(node.encap_name)
-    var parent : Value? = null
-    if (node.parent != null){
-      val (temp_parent, _) = res.register(node.parent.accept(this, context))
-      parent = temp_parent
-      if (res.error != null){ return res }
-      if (parent is ContextObj){
-        var current_table : SymbolTable? = new_symbol_table
-        while (current_table!!.parent != null){
-          current_table = current_table.parent
-        }
-        new_symbol_table.parent = parent.sys_context.symbol_table
-      } else {
-        return res.failure(RTError(
-          node.pos_start, node.pos_end,
-          context,
-          "Encaps can only inherit from other Encaps"
-          ))
-      }
+    if (parent is ContextObj){
+      new_symbol_table = backlink(parent.sys_context.symbol_table, new_symbol_table)
+    }
+    if (node.is_sencap){
+      current_context = Context(random_str(), new_symbol_table, null, null)
     }
     return res.success(ContextObj(hashmap, encap_types, current_context.copy(), node.pos_start, node.pos_end).set_pos(node.pos_start, node.pos_end).set_context(context), context)
   }
