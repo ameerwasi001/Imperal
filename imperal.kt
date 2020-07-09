@@ -621,10 +621,11 @@ class ForNode(identifier : Token, list_expr : Node, body : Node, is_expr : Boole
   }
 }
 
-class EncapNode(statements : Node, encap_name: String, is_sencap : Boolean, pos_start : Position, pos_end : Position) : Node {
+class EncapNode(statements : Node, encap_name: String, is_sencap : Boolean, parent : Node?, pos_start : Position, pos_end : Position) : Node {
   public val statements = statements
   public val encap_name = encap_name
   public val is_sencap = is_sencap
+  public val parent = parent
   public val pos_start = pos_start
   public val pos_end = pos_end
 
@@ -1120,6 +1121,7 @@ class Parser(tokens : MutableList<Token>){
         return res.success(PrevNode(expr, pos_start, this.current_tok!!.pos_end))
     } else if (this.current_tok!!.matches(TT_KEYWORD, "encap") || this.current_tok!!.matches(TT_KEYWORD, "sencap")){
         var encap_name = ""
+        var parent : Node? = null
         val is_sencap = this.current_tok!!.value!! == "sencap"
         res.register_advancement()
         this.advance()
@@ -1143,8 +1145,20 @@ class Parser(tokens : MutableList<Token>){
           encap_name = this.current_tok!!.value!!
           res.register_advancement()
           this.advance()
+          if (this.current_tok!!.type_ == TT_COLON){
+            res.register_advancement()
+            this.advance()
+            if (this.current_tok!!.type_ != TT_IDENTIFIER){
+              return res.failure(InvalidSyntaxError(
+                pos_start, this.current_tok!!.pos_end,
+                "Expected an identifier"
+                ))
+            }
+            parent = res.register(this.expr())
+            if (res.error != null) { return res }
+          }
         }
-        return res.success(EncapNode(statements, encap_name, is_sencap, pos_start, this.current_tok!!.pos_end.copy()))
+        return res.success(EncapNode(statements, encap_name, is_sencap, parent, pos_start, this.current_tok!!.pos_end.copy()))
     } else if (this.current_tok!!.type_ == TT_RSQUARE){
         val expr = res.register(this.list_expr())
         if (res.error != null) { return res }
@@ -2541,6 +2555,25 @@ class Interpreter() : Visitor<RTResult> {
       current_context = Context(random_str(), new_symbol_table, null, null)
     }
     val encap_types = if (node.encap_name == "") mutableListOf<String>() else mutableListOf<String>(node.encap_name)
+    var parent : Value? = null
+    if (node.parent != null){
+      val (temp_parent, _) = res.register(node.parent.accept(this, context))
+      parent = temp_parent
+      if (res.error != null){ return res }
+      if (parent is ContextObj){
+        var current_table : SymbolTable? = new_symbol_table
+        while (current_table!!.parent != null){
+          current_table = current_table.parent
+        }
+        new_symbol_table.parent = parent.sys_context.symbol_table
+      } else {
+        return res.failure(RTError(
+          node.pos_start, node.pos_end,
+          context,
+          "Encaps can only inherit from other Encaps"
+          ))
+      }
+    }
     return res.success(ContextObj(hashmap, encap_types, current_context.copy(), node.pos_start, node.pos_end).set_pos(node.pos_start, node.pos_end).set_context(context), context)
   }
 
